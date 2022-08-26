@@ -1,6 +1,6 @@
 pub mod api;
 mod config;
-mod request;
+pub mod request;
 
 use actix_web::{middleware::Logger, web, App, HttpServer};
 use config::Config;
