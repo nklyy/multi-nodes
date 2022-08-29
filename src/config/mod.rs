@@ -1,9 +1,19 @@
 use dotenv::dotenv;
 use std::env;
 
+#[derive(Default, Debug, Clone)]
 pub struct Config {
     pub port: u16,
     pub environment: String,
+
+    pub bitcoin_rpc_config: BitcoinRpcConfig,
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct BitcoinRpcConfig {
+    pub bitcoin_rpc_user: String,
+    pub bitcoin_rpc_password: String,
+    pub bitcoin_rpc_url_one: String,
 }
 
 impl Config {
@@ -22,7 +32,30 @@ impl Config {
             Err(_) => panic!("incorrect app_env"),
         };
 
-        Config { port, environment }
+        let bitcoin_rpc_user = match env::var("BITCOIN_RPC_USER") {
+            Ok(environment) => environment,
+            Err(_) => panic!("incorrect bitcoin rpc user"),
+        };
+
+        let bitcoin_rpc_password = match env::var("BITCOIN_RPC_PASSWORD") {
+            Ok(environment) => environment,
+            Err(_) => panic!("incorrect bitcoin rpc password"),
+        };
+
+        let bitcoin_rpc_url_one = match env::var("BITCOIN_RPC_URL") {
+            Ok(environment) => environment,
+            Err(_) => panic!("incorrect bitcoin rpc url"),
+        };
+
+        Config {
+            port,
+            environment,
+            bitcoin_rpc_config: BitcoinRpcConfig {
+                bitcoin_rpc_user,
+                bitcoin_rpc_password,
+                bitcoin_rpc_url_one,
+            },
+        }
     }
 }
 

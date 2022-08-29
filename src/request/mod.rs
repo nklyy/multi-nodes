@@ -1,5 +1,9 @@
+use std::collections::HashMap;
+
 use reqwest::{Method, RequestBuilder};
 use serde_json::Value;
+
+pub type Headers = HashMap<String, String>;
 
 #[derive(Default, Debug, Clone)]
 pub struct RequestClient;
@@ -13,6 +17,7 @@ impl RequestClient {
         &self,
         method: Method,
         url: &str,
+        headers: Option<&Headers>,
         add_data: T,
     ) -> Result<reqwest::Response, reqwest::Error>
     where
@@ -22,8 +27,12 @@ impl RequestClient {
 
         let mut request = client.request(method.clone(), url);
 
-        request = request.header("Content-Type", "application/json");
-        request = request.header("Accept", "application/json");
+        // Setting the headers, if any
+        if let Some(headers) = headers {
+            let headers = headers.try_into().unwrap();
+
+            request = request.headers(headers);
+        }
 
         request = add_data(request);
 
@@ -43,9 +52,10 @@ impl RequestClient {
     pub async fn post(
         &self,
         url: &str,
+        headers: Option<&Headers>,
         payload: &Value,
     ) -> Result<reqwest::Response, reqwest::Error> {
-        self.request(Method::POST, url, |req| req.json(payload))
+        self.request(Method::POST, url, headers, |req| req.json(payload))
             .await
     }
 }

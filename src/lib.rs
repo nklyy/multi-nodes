@@ -9,7 +9,7 @@ pub async fn init_server() -> Result<(), std::io::Error> {
     std::env::set_var("RUST_LOG", "info,actix_web=info");
     env_logger::init();
 
-    let local_cfg = Config::init();
+    let cfg = Config::init();
 
     let request_client = request::RequestClient::new();
 
@@ -17,6 +17,7 @@ pub async fn init_server() -> Result<(), std::io::Error> {
         App::new()
             .wrap(Logger::default())
             .app_data(web::Data::new(request_client.clone()))
+            .app_data(web::Data::new(cfg.bitcoin_rpc_config.clone()))
             .service(
                 web::scope("/api")
                     .configure(api::init_health_handler)
@@ -24,7 +25,7 @@ pub async fn init_server() -> Result<(), std::io::Error> {
             )
             .default_service(web::to(api::not_found))
     })
-    .bind(("127.0.0.1", local_cfg.port))?
+    .bind(("127.0.0.1", cfg.port))?
     .run()
     .await
 }

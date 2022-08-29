@@ -1,45 +1,57 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize)]
-#[serde(rename_all = "snake_case")]
-struct Segwit {
-    #[serde(rename = "type")]
-    Type: String,
-    active: bool,
-    height: usize,
-}
+// #[derive(Deserialize)]
+// #[serde(rename_all = "snake_case")]
+// struct Segwit {
+//     #[serde(rename = "type")]
+//     Type: String,
+//     active: bool,
+//     height: usize,
+// }
 
-#[derive(Deserialize)]
-#[serde(rename_all = "snake_case")]
-struct Taproot {
-    #[serde(rename = "type")]
-    Type: String,
-    active: bool,
-}
+// #[derive(Deserialize)]
+// #[serde(rename_all = "snake_case")]
+// struct Taproot {
+//     #[serde(rename = "type")]
+//     Type: String,
+//     active: bool,
+// }
 
-#[derive(Deserialize)]
-#[serde(rename_all = "snake_case")]
-struct Softforks {
-    segwit: Segwit,
-    taproot: Taproot,
-}
+// #[derive(Deserialize)]
+// #[serde(rename_all = "snake_case")]
+// struct Softforks {
+//     segwit: Segwit,
+//     taproot: Taproot,
+// }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
-pub struct BlockchainInfo {
+struct BlockchainInfoResult {
     chain: String,
     blocks: usize,
     headers: usize,
     bestblockhash: String,
     difficulty: usize,
+    time: usize,
     mediantime: usize,
-    verificationprogress: usize,
+    verificationprogress: f64,
     initialblockdownload: bool,
     chainwork: String,
     size_on_disk: usize,
     pruned: bool,
-    pruneheight: usize,
-    automatic_pruning: bool,
-    prune_target_size: usize,
-    softforks: Softforks,
+    warnings: String,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+struct RPCError {
+    code: isize,
+    message: String,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct BlockchainInfo {
+    result: Option<BlockchainInfoResult>,
+    error: Option<RPCError>,
 }
