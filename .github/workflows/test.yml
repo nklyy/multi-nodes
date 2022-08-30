@@ -21,4 +21,7 @@ jobs:
         run: |
           export PORT=3000
           export APP_ENV=development
+          export BITCOIN_RPC_USER=example
+          export BITCOIN_RPC_PASSWORD=example
+          export BITCOIN_RPC_URL=http://127.0.0.1:18332
           make test
