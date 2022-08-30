@@ -1,5 +1,5 @@
 pub mod api;
-mod config;
+pub mod config;
 pub mod request;
 
 use actix_web::{middleware::Logger, web, App, HttpServer};

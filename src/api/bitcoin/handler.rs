@@ -15,7 +15,7 @@ pub fn init(cfg: &mut web::ServiceConfig) {
 }
 
 #[derive(Serialize)]
-struct ResponseError {
+struct ErrorResponse {
     message: String,
 }
 
@@ -49,13 +49,15 @@ async fn status(
     {
         Ok(response) => {
             if response.status() == http::StatusCode::UNAUTHORIZED {
-                HttpResponse::Unauthorized().finish()
+                HttpResponse::Unauthorized().json(ErrorResponse {
+                    message: "Unauthorized".to_string(),
+                })
             } else if response.status() == http::StatusCode::OK {
                 match response.json::<BlockchainInfo>().await {
                     Ok(info) => HttpResponse::Ok().json(info),
                     Err(err) => {
                         error!("failed to decode BlockchainInfo, {}", err);
-                        HttpResponse::BadRequest().json(ResponseError {
+                        HttpResponse::BadRequest().json(ErrorResponse {
                             message: "failed to decode BlockchainInfo".to_string(),
                         })
                     }
@@ -66,7 +68,7 @@ async fn status(
         }
         Err(err) => {
             error!("request error: {}", err);
-            HttpResponse::RequestTimeout().json(ResponseError {
+            HttpResponse::RequestTimeout().json(ErrorResponse {
                 message: "failed to do request, something wrong with rpc node".to_string(),
             })
         }

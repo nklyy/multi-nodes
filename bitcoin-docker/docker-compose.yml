@@ -5,13 +5,9 @@ services:
     image: ruimarinho/bitcoin-core
     restart: always
     expose:
-      - "18333"
       - "18332"
     ports:
-      - "127.0.0.1:18332:18332"
-      - "127.0.0.1:18333:18333"
-      - "68.183.8.109:18332:18332"
-      - "68.183.8.109:18333:18333"
+      - "127.0.0.1:18332:18332"  # set up your external node ip
     volumes:
       - ./data/btc/test/coind:/home/bitcoin/.bitcoin
       - ./bitcoin.conf:/home/bitcoin/.bitcoin/bitcoin.conf

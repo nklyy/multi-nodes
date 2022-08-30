@@ -67,6 +67,18 @@ mod tests {
     fn create_config() {
         let c = Config::init();
         assert_eq!(c.port > 0, true);
-        assert_eq!(c.environment.chars().count() > 0, true);
+        assert_eq!(c.environment, env::var("APP_ENV").unwrap());
+        assert_eq!(
+            c.bitcoin_rpc_config.bitcoin_rpc_user,
+            env::var("BITCOIN_RPC_USER").unwrap()
+        );
+        assert_eq!(
+            c.bitcoin_rpc_config.bitcoin_rpc_password,
+            env::var("BITCOIN_RPC_PASSWORD").unwrap()
+        );
+        assert_eq!(
+            c.bitcoin_rpc_config.bitcoin_rpc_url_one,
+            env::var("BITCOIN_RPC_URL").unwrap()
+        );
     }
 }
