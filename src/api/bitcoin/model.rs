@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 
 // #[derive(Deserialize)]
-// #[serde(rename_all = "snake_case")]
 // struct Segwit {
 //     #[serde(rename = "type")]
 //     Type: String,
@@ -10,7 +9,6 @@ use serde::{Deserialize, Serialize};
 // }
 
 // #[derive(Deserialize)]
-// #[serde(rename_all = "snake_case")]
 // struct Taproot {
 //     #[serde(rename = "type")]
 //     Type: String,
@@ -18,20 +16,18 @@ use serde::{Deserialize, Serialize};
 // }
 
 // #[derive(Deserialize)]
-// #[serde(rename_all = "snake_case")]
 // struct Softforks {
 //     segwit: Segwit,
 //     taproot: Taproot,
 // }
 
 #[derive(Deserialize, Serialize)]
-#[serde(rename_all = "snake_case")]
 struct BlockchainInfoResult {
     chain: String,
     blocks: usize,
     headers: usize,
     bestblockhash: String,
-    difficulty: usize,
+    // difficulty: usize,
     time: usize,
     mediantime: usize,
     verificationprogress: f64,
@@ -43,15 +39,19 @@ struct BlockchainInfoResult {
 }
 
 #[derive(Deserialize, Serialize)]
-#[serde(rename_all = "snake_case")]
-struct RPCError {
-    code: isize,
-    message: String,
+pub struct RPCError {
+    pub code: isize,
+    pub message: String,
 }
 
 #[derive(Deserialize, Serialize)]
-#[serde(rename_all = "snake_case")]
 pub struct BlockchainInfo {
     result: Option<BlockchainInfoResult>,
-    error: Option<RPCError>,
+    pub error: Option<RPCError>,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct CreateTx {
+    result: Option<String>,
+    pub error: Option<RPCError>,
 }

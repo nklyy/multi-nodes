@@ -7,7 +7,7 @@ use actix_web::{
 #[actix_web::test]
 async fn ping() {
     let app = test::init_service(
-        App::new().service(web::scope("/api").configure(rpc_api::api::init_health_handler)),
+        App::new().service(web::scope("/api").configure(multi_nodes::api::init_health_handler)),
     )
     .await;
 
