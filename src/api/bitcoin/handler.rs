@@ -94,35 +94,35 @@ lazy_static::lazy_static! {
 }
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
-struct Utxo {
+pub struct Utxo {
     #[validate(required, length(min = 1, message = "cannot be empty"))]
-    tx_id: Option<String>,
+    pub tx_id: Option<String>,
 
     #[validate(required, range(min = 0, message = "cannot be empty"))]
-    vout: Option<usize>,
+    pub vout: Option<usize>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
-struct ToAddresses {
+pub struct ToAddresses {
     #[validate(
         required,
         regex(path = "RE_BITCOIN_ADDRESS", message = "invalid Bitcoin address")
     )]
-    to_address: Option<String>,
+    pub to_address: Option<String>,
 
     #[validate(required, range(min = 0.0, message = "cannot be empty"))]
-    amount: Option<f64>,
+    pub amount: Option<f64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct CreateTxRequest {
     // #[validate]
     #[validate(required, length(min = 1, message = "cannot be empty"))]
-    utxos: Option<Vec<Utxo>>,
+    pub utxos: Option<Vec<Utxo>>,
 
     #[validate]
     #[validate(required, length(min = 1, message = "cannot be empty"))]
-    to: Option<Vec<ToAddresses>>,
+    pub to: Option<Vec<ToAddresses>>,
 }
 
 #[post("/create-tx")]

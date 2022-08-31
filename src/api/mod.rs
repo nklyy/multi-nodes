@@ -1,8 +1,8 @@
 use actix_web::HttpResponse;
 use serde::Serialize;
 
-mod bitcoin;
-mod health;
+pub mod bitcoin;
+pub mod health;
 
 pub use bitcoin::handler::init as init_bitcoin_handler;
 pub use health::handler::init as init_health_handler;
