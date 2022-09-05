@@ -2,7 +2,7 @@
 
 use std::{array, io::Bytes};
 
-use super::handler::Utxo;
+use super::{handler::Utxo, utils::last_index_byte};
 
 const DEFAULT_TX_IN_OUT_ALLOC: usize = 15;
 const HASH_SIZE: i32 = 32;
@@ -172,6 +172,10 @@ fn decode(dst: &mut Hash, src: String) {
             (reversed_hash[HASH_SIZE as usize - 1 as usize - i], *b)
     }
 }
+
+// fn decode_address(address: String) {
+//     let oneIndex = last_index_byte(address, b'1');
+// }
 
 #[cfg(test)]
 mod tests {

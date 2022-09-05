@@ -9,7 +9,10 @@ use serde_json::{json, Value};
 use validator::Validate;
 
 use crate::{
-    api::bitcoin::model::{BlockchainInfo, CreateTx},
+    api::bitcoin::{
+        model::{BlockchainInfo, CreateTx},
+        service::create_transaction,
+    },
     config::BitcoinRpcConfig,
     request::RequestClient,
 };
@@ -100,6 +103,12 @@ pub struct Utxo {
 
     #[validate(required, range(min = 0, message = "cannot be empty"))]
     pub vout: Option<usize>,
+
+    #[validate(required, range(min = 0, message = "cannot be empty"))]
+    pub amount: Option<usize>,
+
+    #[validate(required, length(min = 1, message = "cannot be empty"))]
+    pub pk_script: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
@@ -133,6 +142,8 @@ async fn create_tx(
 ) -> impl Responder {
     match json.validate() {
         Ok(_) => {
+            create_transaction(json.utxos.as_ref().unwrap());
+
             let mut headers = HashMap::new();
             headers.insert("Content-Type".to_string(), "application/json".to_string());
             headers.insert("Accept".to_string(), "application/json".to_string());
