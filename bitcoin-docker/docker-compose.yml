@@ -4,10 +4,11 @@ services:
     container_name: bitcoin-node
     image: ruimarinho/bitcoin-core
     restart: always
+    # privileged: true #use this for kylemanna/bitcoind image
     expose:
       - "18332"
     ports:
       - "127.0.0.1:18332:18332"  # set up your external node ip
     volumes:
-      - ./data/btc/test/coind:/home/bitcoin/.bitcoin
-      - ./bitcoin.conf:/home/bitcoin/.bitcoin/bitcoin.conf
+      - ./data/btc/test/coind:/home/bitcoin/.bitcoin #remove /home if you use kylemanna/bitcoind image
+      - ./bitcoin.conf:/home/bitcoin/.bitcoin/bitcoin.conf #remove /home if you use kylemanna/bitcoind image
