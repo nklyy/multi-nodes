@@ -18,3 +18,4 @@ validator = { version = "0.16.0", features = ["derive"] }
 lazy_static = "1.4.0"
 regex = "1.6.0"
 hex = "0.4.3"
+uint = "0.9.3"
