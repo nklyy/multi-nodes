@@ -1,3 +1,5 @@
+use secp256k1::{PublicKey, Secp256k1};
+
 use super::{chaincfg::Params as ChainParams, utils::last_index_byte};
 
 // NewAddressPubKey returns a new AddressPubKey which represents a pay-to-pubkey
@@ -5,10 +7,10 @@ use super::{chaincfg::Params as ChainParams, utils::last_index_byte};
 // uncompressed, compressed, or hybrid.
 
 // func NewAddressPubKey(serializedPubKey []byte, net *chaincfg.Params) (*AddressPubKey, error) {
-// 	pubKey, err := btcec.ParsePubKey(serializedPubKey, btcec.S256())
-// 	if err != nil {
-// 		return nil, err
-// 	}
+// pubKey, err := btcec.ParsePubKey(serializedPubKey, btcec.S256())
+// if err != nil {
+// 	return nil, err
+// }
 
 // 	// Set the format of the pubkey.  This probably should be returned
 // 	// from btcec, but do it here to avoid API churn.  We already know the
@@ -28,6 +30,13 @@ use super::{chaincfg::Params as ChainParams, utils::last_index_byte};
 // 		pubKeyHashID: net.PubKeyHashAddrID,
 // 	}, nil
 // }
+
+fn ParsePubKey(serialized_pub_key: Vec<u8>, net: ChainParams) {
+    let pub_key = match PublicKey::from_slice(&serialized_pub_key) {
+        Ok(key) => key,
+        Err(err) => panic!("{}", err),
+    };
+}
 
 pub fn decode_address(address: &str, defaultNet: ChainParams) {
     let oneIndex = last_index_byte(address, b'1');
