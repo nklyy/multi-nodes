@@ -1,4 +1,4 @@
 #[cfg(test)]
-mod bitcoin;
+mod btc_test;
 #[cfg(test)]
 mod health;

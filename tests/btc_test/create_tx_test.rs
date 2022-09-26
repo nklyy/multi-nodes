@@ -1,6 +1,6 @@
 use actix_web::{http, test, web, App};
 use multi_nodes::{
-    api::bitcoin::handler::{CreateTxRequest, ToAddresses, Utxo},
+    api::btc::handler::{CreateTxRequest, ToAddresses, Utxo},
     config::Config,
     request,
 };
@@ -31,7 +31,7 @@ async fn create_tx() {
         }]),
         to: Some(vec![ToAddresses {
             to_address: Some("mmfbzo2533SFa34ErmYNY4RdVtfw5XYK1u".to_string()),
-            amount: Some(0.001),
+            amount: Some("1 BTC".to_string()),
         }]),
     };
 

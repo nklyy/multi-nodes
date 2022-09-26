@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 use validator::Validate;
 
 use crate::{
-    api::bitcoin::{
+    api::btc::{
         model::{BlockchainInfo, CreateTx},
         service::create_transaction,
     },
@@ -102,10 +102,10 @@ pub struct Utxo {
     pub tx_id: Option<String>,
 
     #[validate(required, range(min = 0, message = "cannot be empty"))]
-    pub vout: Option<usize>,
+    pub vout: Option<u32>,
 
     #[validate(required, range(min = 0, message = "cannot be empty"))]
-    pub amount: Option<usize>,
+    pub amount: Option<u64>,
 
     #[validate(required, length(min = 1, message = "cannot be empty"))]
     pub pk_script: Option<String>,
@@ -119,8 +119,8 @@ pub struct ToAddresses {
     )]
     pub to_address: Option<String>,
 
-    #[validate(required, range(min = 0.0, message = "cannot be empty"))]
-    pub amount: Option<f64>,
+    #[validate(required, length(min = 1, message = "cannot be empty"))]
+    pub amount: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
@@ -142,7 +142,11 @@ async fn create_tx(
 ) -> impl Responder {
     match json.validate() {
         Ok(_) => {
-            create_transaction(json.utxos.as_ref().unwrap());
+            create_transaction(
+                json.utxos.as_ref().unwrap(),
+                json.to.as_ref().unwrap(),
+                "mmfbzo2533SFa34ErmYNY4RdVtfw5XYK1u",
+            );
 
             let mut headers = HashMap::new();
             headers.insert("Content-Type".to_string(), "application/json".to_string());
@@ -159,12 +163,12 @@ async fn create_tx(
                 ),
             );
 
-            let mut payload_to_addresses: Vec<HashMap<String, f64>> = Vec::new();
+            let mut payload_to_addresses: Vec<HashMap<String, String>> = Vec::new();
             json.to.as_ref().unwrap().iter().for_each(|to| {
-                let mut r: HashMap<String, f64> = HashMap::new();
+                let mut r: HashMap<String, String> = HashMap::new();
                 r.insert(
                     to.to_address.as_ref().unwrap().to_string(),
-                    to.amount.unwrap(),
+                    to.amount.as_ref().unwrap().to_string(),
                 );
 
                 payload_to_addresses.push(r);
