@@ -5,12 +5,12 @@ use base64::encode;
 use log::error;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::json;
 use validator::Validate;
 
 use crate::{
     api::btc::{
-        model::{BlockchainInfo, CreateTx},
+        model::{BlockchainInfo, FeeRate},
         service::create_transaction,
     },
     config::BitcoinRpcConfig,
@@ -104,8 +104,8 @@ pub struct Utxo {
     #[validate(required, range(min = 0, message = "cannot be empty"))]
     pub vout: Option<u32>,
 
-    #[validate(required, range(min = 0, message = "cannot be empty"))]
-    pub amount: Option<u64>,
+    #[validate(required, range(min = 0.00000001, message = "cannot be empty"))]
+    pub amount: Option<f64>,
 
     #[validate(required, length(min = 1, message = "cannot be empty"))]
     pub pk_script: Option<String>,
@@ -119,8 +119,8 @@ pub struct ToAddresses {
     )]
     pub to_address: Option<String>,
 
-    #[validate(required, length(min = 1, message = "cannot be empty"))]
-    pub amount: Option<String>,
+    #[validate(required, range(min = 0.00000001, message = "cannot be empty"))]
+    pub amount: Option<f64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
@@ -132,6 +132,9 @@ pub struct CreateTxRequest {
     #[validate]
     #[validate(required, length(min = 1, message = "cannot be empty"))]
     pub to: Option<Vec<ToAddresses>>,
+
+    #[validate(required, length(min = 1, message = "cannot be empty"))]
+    pub change_address: Option<String>,
 }
 
 #[post("/create-tx")]
@@ -142,12 +145,6 @@ async fn create_tx(
 ) -> impl Responder {
     match json.validate() {
         Ok(_) => {
-            create_transaction(
-                json.utxos.as_ref().unwrap(),
-                json.to.as_ref().unwrap(),
-                "mmfbzo2533SFa34ErmYNY4RdVtfw5XYK1u",
-            );
-
             let mut headers = HashMap::new();
             headers.insert("Content-Type".to_string(), "application/json".to_string());
             headers.insert("Accept".to_string(), "application/json".to_string());
@@ -163,25 +160,7 @@ async fn create_tx(
                 ),
             );
 
-            let mut payload_to_addresses: Vec<HashMap<String, String>> = Vec::new();
-            json.to.as_ref().unwrap().iter().for_each(|to| {
-                let mut r: HashMap<String, String> = HashMap::new();
-                r.insert(
-                    to.to_address.as_ref().unwrap().to_string(),
-                    to.amount.as_ref().unwrap().to_string(),
-                );
-
-                payload_to_addresses.push(r);
-            });
-
-            let mut payload_utxos: Vec<Value> = Vec::new();
-            json.utxos.as_ref().unwrap().iter().for_each(|utxo| {
-                payload_utxos.push(
-                    json!({"txid": utxo.tx_id.as_ref().unwrap(), "vout": utxo.vout.unwrap()}),
-                );
-            });
-
-            let payload = json!({ "jsonrpc": "2.0",  "method": "createrawtransaction", "params": [payload_utxos, payload_to_addresses]});
+            let payload = json!({ "jsonrpc": "2.0",  "method": "estimatesmartfee", "params": [4]});
 
             match rq_client
                 .post(&btc_rpc_cfg.bitcoin_rpc_url_one, Some(&headers), &payload)
@@ -193,14 +172,20 @@ async fn create_tx(
                             message: "Unauthorized".to_string(),
                         })
                     } else {
-                        match response.json::<CreateTx>().await {
-                            Ok(info) => {
-                                if let Some(err) = info.error {
+                        match response.json::<FeeRate>().await {
+                            Ok(fee_rate) => {
+                                if let Some(err) = fee_rate.error {
                                     HttpResponse::BadRequest().json(ErrorResponse {
                                         message: err.message,
                                     })
                                 } else {
-                                    HttpResponse::Ok().json(info)
+                                    let hex_tx = create_transaction(
+                                        json.utxos.as_ref().unwrap(),
+                                        json.to.as_ref().unwrap(),
+                                        json.change_address.as_ref().unwrap(),
+                                        fee_rate.result.unwrap().feerate.unwrap(),
+                                    );
+                                    HttpResponse::Ok().json(hex_tx)
                                 }
                             }
                             Err(err) => {

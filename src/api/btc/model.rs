@@ -55,3 +55,15 @@ pub struct CreateTx {
     result: Option<String>,
     pub error: Option<RPCError>,
 }
+
+#[derive(Deserialize, Serialize)]
+pub struct FeeRateResult {
+    pub feerate: Option<f64>,
+    pub blocks: Option<usize>,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct FeeRate {
+    pub result: Option<FeeRateResult>,
+    pub error: Option<RPCError>,
+}
