@@ -1,10 +1,10 @@
 use actix_web::HttpResponse;
 use serde::Serialize;
 
-pub mod bitcoin;
+pub mod btc;
 pub mod health;
 
-pub use bitcoin::handler::init as init_bitcoin_handler;
+pub use btc::handler::init as init_bitcoin_handler;
 pub use health::handler::init as init_health_handler;
 
 #[derive(Serialize)]

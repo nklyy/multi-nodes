@@ -22,6 +22,12 @@ use serde::{Deserialize, Serialize};
 // }
 
 #[derive(Deserialize, Serialize)]
+pub struct RPCError {
+    pub code: isize,
+    pub message: String,
+}
+
+#[derive(Deserialize, Serialize)]
 struct BlockchainInfoResult {
     chain: String,
     blocks: usize,
@@ -37,13 +43,6 @@ struct BlockchainInfoResult {
     pruned: bool,
     warnings: String,
 }
-
-#[derive(Deserialize, Serialize)]
-pub struct RPCError {
-    pub code: isize,
-    pub message: String,
-}
-
 #[derive(Deserialize, Serialize)]
 pub struct BlockchainInfo {
     result: Option<BlockchainInfoResult>,
@@ -53,5 +52,46 @@ pub struct BlockchainInfo {
 #[derive(Deserialize, Serialize)]
 pub struct CreateTx {
     result: Option<String>,
+    pub error: Option<RPCError>,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct FeeRateResult {
+    pub feerate: f64,
+    pub blocks: usize,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct FeeRate {
+    pub result: Option<FeeRateResult>,
+    pub error: Option<RPCError>,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SignTxResultErrors {
+    pub txid: String,
+    pub vout: usize,
+    pub script_sig: String,
+    pub sequence: usize,
+    pub error: String,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct SignTxResult {
+    pub hex: String,
+    pub complete: bool,
+    pub errors: Option<Vec<SignTxResultErrors>>,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct SignTx {
+    pub result: Option<SignTxResult>,
+    pub error: Option<RPCError>,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct SendTx {
+    pub result: Option<String>,
     pub error: Option<RPCError>,
 }
