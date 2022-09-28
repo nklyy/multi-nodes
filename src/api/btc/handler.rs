@@ -10,7 +10,7 @@ use validator::Validate;
 
 use crate::{
     api::btc::{
-        model::{BlockchainInfo, FeeRate},
+        model::{BlockchainInfo, FeeRate, SendTx, SignTx},
         service::create_transaction,
     },
     config::BitcoinRpcConfig,
@@ -20,11 +20,18 @@ use crate::{
 pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(status);
     cfg.service(create_tx);
+    cfg.service(sign_tx);
+    cfg.service(send_tx);
 }
 
 #[derive(Serialize)]
 struct ErrorResponse {
     message: String,
+}
+
+#[derive(Serialize)]
+struct OkResponse {
+    result: String,
 }
 
 #[get("/status")]
@@ -179,17 +186,173 @@ async fn create_tx(
                                         message: err.message,
                                     })
                                 } else {
-                                    let hex_tx = create_transaction(
+                                    match create_transaction(
                                         json.utxos.as_ref().unwrap(),
                                         json.to.as_ref().unwrap(),
                                         json.change_address.as_ref().unwrap(),
-                                        fee_rate.result.unwrap().feerate.unwrap(),
-                                    );
-                                    HttpResponse::Ok().json(hex_tx)
+                                        fee_rate.result.unwrap().feerate,
+                                    ) {
+                                        Ok(hex_tx) => {
+                                            return HttpResponse::Ok()
+                                                .json(OkResponse { result: hex_tx })
+                                        }
+                                        Err(err) => {
+                                            return HttpResponse::BadRequest().json(ErrorResponse {
+                                                message: err.to_string(),
+                                            })
+                                        }
+                                    };
                                 }
                             }
                             Err(err) => {
                                 error!("failed to decode BlockchainInfo, {}", err);
+                                HttpResponse::BadRequest().json(ErrorResponse {
+                                    message: "failed to decode response".to_string(),
+                                })
+                            }
+                        }
+                    }
+                }
+                Err(err) => {
+                    error!("request error: {}", err);
+                    HttpResponse::RequestTimeout().json(ErrorResponse {
+                        message: "failed to do request, something wrong with rpc node".to_string(),
+                    })
+                }
+            }
+        }
+        Err(err) => HttpResponse::BadRequest().json(err),
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Validate)]
+pub struct SignTxRequest {
+    #[validate(required, length(min = 1, message = "cannot be empty"))]
+    pub raw_tx: Option<String>,
+
+    #[validate(required, length(min = 1, message = "cannot be empty"))]
+    pub private_key: Option<String>,
+}
+
+#[post("/sign-tx")]
+async fn sign_tx(
+    json: web::Json<SignTxRequest>,
+    rq_client: web::Data<RequestClient>,
+    btc_rpc_cfg: web::Data<BitcoinRpcConfig>,
+) -> impl Responder {
+    match json.validate() {
+        Ok(_) => {
+            let mut headers = HashMap::new();
+            headers.insert("Content-Type".to_string(), "application/json".to_string());
+            headers.insert("Accept".to_string(), "application/json".to_string());
+
+            headers.insert(
+                "Authorization".to_string(),
+                format!(
+                    "Basic {}",
+                    encode(format!(
+                        "{}:{}",
+                        btc_rpc_cfg.bitcoin_rpc_user, btc_rpc_cfg.bitcoin_rpc_password
+                    ))
+                ),
+            );
+
+            let payload = json!({ "jsonrpc": "2.0",  "method": "signrawtransactionwithkey", "params": [json.raw_tx.as_ref().unwrap(), [json.private_key.as_ref().unwrap()]]});
+
+            match rq_client
+                .post(&btc_rpc_cfg.bitcoin_rpc_url_one, Some(&headers), &payload)
+                .await
+            {
+                Ok(response) => {
+                    if response.status() == http::StatusCode::UNAUTHORIZED {
+                        HttpResponse::Unauthorized().json(ErrorResponse {
+                            message: "Unauthorized".to_string(),
+                        })
+                    } else {
+                        match response.json::<SignTx>().await {
+                            Ok(signed_tx) => {
+                                if let Some(err) = signed_tx.error {
+                                    HttpResponse::BadRequest().json(ErrorResponse {
+                                        message: err.message,
+                                    })
+                                } else {
+                                    HttpResponse::Ok().json(signed_tx)
+                                }
+                            }
+                            Err(err) => {
+                                error!("failed to sign tx, {}", err);
+                                HttpResponse::BadRequest().json(ErrorResponse {
+                                    message: "failed to decode response".to_string(),
+                                })
+                            }
+                        }
+                    }
+                }
+                Err(err) => {
+                    error!("request error: {}", err);
+                    HttpResponse::RequestTimeout().json(ErrorResponse {
+                        message: "failed to do request, something wrong with rpc node".to_string(),
+                    })
+                }
+            }
+        }
+        Err(err) => HttpResponse::BadRequest().json(err),
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Validate)]
+pub struct SendTxRequest {
+    #[validate(required, length(min = 1, message = "cannot be empty"))]
+    pub signed_tx: Option<String>,
+}
+
+#[post("/send-tx")]
+async fn send_tx(
+    json: web::Json<SendTxRequest>,
+    rq_client: web::Data<RequestClient>,
+    btc_rpc_cfg: web::Data<BitcoinRpcConfig>,
+) -> impl Responder {
+    match json.validate() {
+        Ok(_) => {
+            let mut headers = HashMap::new();
+            headers.insert("Content-Type".to_string(), "application/json".to_string());
+            headers.insert("Accept".to_string(), "application/json".to_string());
+
+            headers.insert(
+                "Authorization".to_string(),
+                format!(
+                    "Basic {}",
+                    encode(format!(
+                        "{}:{}",
+                        btc_rpc_cfg.bitcoin_rpc_user, btc_rpc_cfg.bitcoin_rpc_password
+                    ))
+                ),
+            );
+
+            let payload = json!({ "jsonrpc": "2.0",  "method": "sendrawtransaction", "params": [json.signed_tx.as_ref().unwrap()]});
+
+            match rq_client
+                .post(&btc_rpc_cfg.bitcoin_rpc_url_one, Some(&headers), &payload)
+                .await
+            {
+                Ok(response) => {
+                    if response.status() == http::StatusCode::UNAUTHORIZED {
+                        HttpResponse::Unauthorized().json(ErrorResponse {
+                            message: "Unauthorized".to_string(),
+                        })
+                    } else {
+                        match response.json::<SendTx>().await {
+                            Ok(sended_tx) => {
+                                if let Some(err) = sended_tx.error {
+                                    HttpResponse::BadRequest().json(ErrorResponse {
+                                        message: err.message,
+                                    })
+                                } else {
+                                    HttpResponse::Ok().json(sended_tx)
+                                }
+                            }
+                            Err(err) => {
+                                error!("failed to sign tx, {}", err);
                                 HttpResponse::BadRequest().json(ErrorResponse {
                                     message: "failed to decode response".to_string(),
                                 })

@@ -7,68 +7,95 @@ use bitcoin::{
 
 use super::handler::{ToAddresses, Utxo};
 
-pub fn create_transaction(utxos: &Vec<Utxo>, to: &Vec<ToAddresses>, change: &str, fee_rate: f64) {
+pub fn create_transaction(
+    utxos: &Vec<Utxo>,
+    to: &Vec<ToAddresses>,
+    change: &str,
+    fee_rate: f64,
+) -> Result<String, &'static str> {
     let tx_in_amount: f64 = utxos.iter().map(|utxo| utxo.amount.unwrap()).sum();
     let tx_out_amount: f64 = to.iter().map(|t| t.amount.unwrap()).sum();
 
-    println!(
-        "TX_IN_AMOUNT: {}, TX_OUT_AMOUNT: {}, FEE_RATE: {}",
-        tx_in_amount, tx_out_amount, fee_rate
-    );
+    let mut txs_in: Vec<TxIn> = Vec::new();
+    for utxo in utxos {
+        let tx_id = match Txid::from_hex(utxo.tx_id.as_ref().unwrap()) {
+            Ok(tx_id) => tx_id,
+            Err(_err) => return Err("failed to decode tx_id"),
+        };
 
-    let txs_in: Vec<TxIn> = utxos
-        .iter()
-        .map(|utxo| TxIn {
+        txs_in.push(TxIn {
             previous_output: OutPoint {
-                txid: Txid::from_hex(utxo.tx_id.as_ref().unwrap()).unwrap(),
+                txid: tx_id,
                 vout: utxo.vout.unwrap(),
             },
             script_sig: Script::new(),
             sequence: Sequence::MAX, // Disable LockTime and RBF.,
             witness: Witness::default(),
         })
-        .collect();
+    }
 
-    let mut txs_out: Vec<TxOut> = to
-        .iter()
-        .map(|t| TxOut {
-            value: Amount::from_btc(t.amount.unwrap()).unwrap().to_sat(),
-            script_pubkey: Address::from_str(t.to_address.as_ref().unwrap())
-                .unwrap()
-                .script_pubkey(),
+    let mut txs_out: Vec<TxOut> = Vec::new();
+    for t in to {
+        let script_pubkey = match Address::from_str(t.to_address.as_ref().unwrap()) {
+            Ok(key) => key.script_pubkey(),
+            Err(_err) => return Err("failed to decode script_pubkey"),
+        };
+
+        let value = match Amount::from_btc(t.amount.unwrap()) {
+            Ok(value) => value.to_sat(),
+            Err(_err) => return Err("failed decode to address amount to sat"),
+        };
+
+        txs_out.push(TxOut {
+            value,
+            script_pubkey,
         })
-        .collect();
+    }
 
     if tx_out_amount > tx_in_amount {
-        panic!("your balance too low for this transaction")
+        return Err("your balance too low for this transaction");
     }
 
     let change_amount = format!("{:.8}", (tx_in_amount - tx_out_amount));
-    println!("change_amount FEE {:.8}", change_amount);
 
+    let change_amount = match Amount::from_btc(change_amount.parse().unwrap()) {
+        Ok(amount) => amount.to_sat(),
+        Err(_err) => return Err("failed parse change amount"),
+    };
+    let change_address_script = match Address::from_str(change) {
+        Ok(address) => address.script_pubkey(),
+        Err(_err) => return Err("failed to decode change address to script"),
+    };
+
+    // push change address and amount
     txs_out.push(TxOut {
-        value: Amount::from_btc(change_amount.parse().unwrap())
-            .unwrap()
-            .to_sat(),
-        script_pubkey: Address::from_str(change).unwrap().script_pubkey(),
+        value: change_amount,
+        script_pubkey: change_address_script,
     });
 
     let tx_byte_size = txs_in.len() * 180 + txs_out.len() * 34 + 10 + txs_in.len();
-
     // convert fee to satoshis to kb and mul
     let total_fee = Amount::from_sat((fee_rate * 1.0e5 * tx_byte_size as f64) as u64).to_btc();
-    println!("TOTAL FEE {}", total_fee);
+    let total_fee_sat = match Amount::from_btc(total_fee) {
+        Ok(value) => value.to_sat(),
+        Err(_err) => return Err("failed to convert total_fee to sat"),
+    };
 
     // sub fee from out transaction
-    if txs_out.len() - 1 > 1 {
+    if (txs_out.len() - 1) > 1 {
         let fee_for_each_tx = total_fee / (txs_out.len() - 1) as f64;
-
         let to_len = txs_out.len() - 1;
-        txs_out[..to_len].iter_mut().for_each(|tx| {
-            tx.value = tx.value - Amount::from_btc(fee_for_each_tx).unwrap().to_sat();
-        });
+
+        for tx in &mut txs_out[..to_len] {
+            let converted_fee_for_each_tx = match Amount::from_btc(fee_for_each_tx) {
+                Ok(value) => value.to_sat(),
+                Err(_err) => return Err("failed to convert fee_for_each_tx to sat"),
+            };
+
+            tx.value = tx.value - converted_fee_for_each_tx;
+        }
     } else {
-        txs_out[0].value = txs_out[0].value - Amount::from_btc(total_fee).unwrap().to_sat();
+        txs_out[0].value = txs_out[0].value - total_fee_sat;
     }
 
     let tx = Transaction {
@@ -78,11 +105,10 @@ pub fn create_transaction(utxos: &Vec<Utxo>, to: &Vec<ToAddresses>, change: &str
         output: txs_out,
     };
 
-    let psbt = Psbt::from_unsigned_tx(tx).unwrap();
+    let psbt = match Psbt::from_unsigned_tx(tx) {
+        Ok(psbt) => psbt,
+        Err(_err) => return Err("failed decode transaction to unsigned"),
+    };
 
-    let hex = encode::serialize_hex(&psbt.extract_tx());
-    println!(
-        "You should now be able to broadcast the following transaction: \n\n{}",
-        hex
-    );
+    Ok(encode::serialize_hex(&psbt.extract_tx()))
 }
